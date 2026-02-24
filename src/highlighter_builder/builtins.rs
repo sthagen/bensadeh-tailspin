@@ -51,10 +51,16 @@ fn builtin_keywords() -> Vec<KeywordConfig> {
         },
     ];
 
-    let booleans = [KeywordConfig {
-        words: vec!["null".to_string(), "true".to_string(), "false".to_string()],
-        style: Style::new().fg(Color::Red).italic(),
-    }];
+    let booleans = [
+        KeywordConfig {
+            words: vec!["null".to_string(), "false".to_string()],
+            style: Style::new().fg(Color::Red).italic(),
+        },
+        KeywordConfig {
+            words: vec!["true".to_string()],
+            style: Style::new().fg(Color::Green).italic(),
+        },
+    ];
 
     vec![]
         .into_iter()

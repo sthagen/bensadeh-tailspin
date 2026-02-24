@@ -1,6 +1,7 @@
 # Changelog
 ## 5.6.0
 
+- Change builtin keyword highlighting of `true` from red to green
 - Enable LTO and single codegen unit for release builds, improving performance and reducing binary size
 
 
