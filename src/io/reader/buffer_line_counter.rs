@@ -1,3 +1,4 @@
+use memchr::memchr;
 use miette::{IntoDiagnostic, Result, miette};
 use tokio::io::{AsyncBufRead, AsyncBufReadExt};
 
@@ -36,9 +37,12 @@ where
         return Ok(PeekResult::Eof);
     }
 
-    match buf.iter().filter(|&&b| b == b'\n').count() {
-        0 | 1 => Ok(PeekResult::SingleOrNoNewline),
-        _ => Ok(PeekResult::MultipleNewlines),
+    match memchr(b'\n', buf) {
+        None => Ok(PeekResult::SingleOrNoNewline),
+        Some(pos) => match memchr(b'\n', &buf[pos + 1..]) {
+            None => Ok(PeekResult::SingleOrNoNewline),
+            Some(_) => Ok(PeekResult::MultipleNewlines),
+        },
     }
 }
 
