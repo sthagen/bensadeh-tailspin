@@ -20,6 +20,7 @@
 - Trim tokio features from `full` to only what's used, reducing compile time
 - Replace `async-trait` with native async traits (Rust 1.75+), removing a dependency and dynamic dispatch overhead
 - Add `strip = true` to release profile, reducing binary size
+- Cache ANSI escape sequence finders in `ChunkIter` using `LazyLock` statics instead of recreating per call
 
 ## 5.5.0
 

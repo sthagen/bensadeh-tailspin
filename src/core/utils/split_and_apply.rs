@@ -3,6 +3,10 @@ use crate::core::highlighters::StaticHighlight;
 use memchr::memmem::Finder;
 use std::borrow::Cow;
 use std::cmp::min;
+use std::sync::LazyLock;
+
+static ESCAPE_FINDER: LazyLock<Finder<'static>> = LazyLock::new(|| Finder::new("\x1b["));
+static RESET_FINDER: LazyLock<Finder<'static>> = LazyLock::new(|| Finder::new("\x1b[0m"));
 
 const SIXTEEN_KB: usize = 16 * 1024;
 
@@ -67,8 +71,6 @@ struct ChunkIter<'a> {
     input: &'a str,
     pos: usize,
     inside_escape: bool,
-    escape_finder: Finder<'static>,
-    reset_finder: Finder<'static>,
 }
 
 impl<'a> ChunkIter<'a> {
@@ -77,8 +79,6 @@ impl<'a> ChunkIter<'a> {
             input,
             pos: 0,
             inside_escape: false,
-            escape_finder: Finder::new("\x1b["),
-            reset_finder: Finder::new("\x1b[0m"),
         }
     }
 }
@@ -94,7 +94,7 @@ impl<'a> Iterator for ChunkIter<'a> {
         let remainder = &self.input[self.pos..];
 
         if self.inside_escape {
-            if let Some(idx) = self.reset_finder.find(remainder.as_bytes()) {
+            if let Some(idx) = RESET_FINDER.find(remainder.as_bytes()) {
                 let end = self.pos + idx + "\x1b[0m".len();
                 let chunk = Chunk::AlreadyHighlighted(&self.input[self.pos..end]);
                 self.pos = end;
@@ -105,7 +105,7 @@ impl<'a> Iterator for ChunkIter<'a> {
                 self.pos = self.input.len();
                 Some(chunk)
             }
-        } else if let Some(idx) = self.escape_finder.find(remainder.as_bytes()) {
+        } else if let Some(idx) = ESCAPE_FINDER.find(remainder.as_bytes()) {
             if idx == 0 {
                 self.inside_escape = true;
                 return self.next();
