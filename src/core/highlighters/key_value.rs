@@ -26,6 +26,10 @@ impl KeyValueHighlighter {
 
 impl Highlight for KeyValueHighlighter {
     fn apply<'a>(&self, input: &'a str) -> Cow<'a, str> {
+        if !input.as_bytes().contains(&b'=') {
+            return Cow::Borrowed(input);
+        }
+
         self.regex.replace_all(input, |captures: &Captures| {
             let space_or_start = captures.name("space_or_start").map(|s| s.as_str()).unwrap_or_default();
             let mut buf = String::with_capacity(space_or_start.len() + 32);

@@ -62,6 +62,10 @@ impl PointerHighlighter {
 
 impl Highlight for PointerHighlighter {
     fn apply<'a>(&self, input: &'a str) -> Cow<'a, str> {
+        if !input.as_bytes().contains(&b'x') && !input.as_bytes().contains(&b'X') {
+            return Cow::Borrowed(input);
+        }
+
         self.regex.replace_all(input, |caps: &Captures<'_>| {
             let prefix = caps.name("prefix").or_else(|| caps.name("prefix64")).unwrap().as_str();
             let first_half = caps

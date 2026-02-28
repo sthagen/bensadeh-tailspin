@@ -22,6 +22,7 @@
 - Add `strip = true` to release profile, reducing binary size
 - Cache ANSI escape sequence finders in `ChunkIter` using `LazyLock` statics instead of recreating per call
 - Remove unnecessary string allocation in temp file writer
+- Add fast byte-check early exits to key_value, unix_process, and pointer highlighters
 
 ## 5.5.0
 

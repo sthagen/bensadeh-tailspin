@@ -28,6 +28,10 @@ impl UnixProcessHighlighter {
 
 impl Highlight for UnixProcessHighlighter {
     fn apply<'a>(&self, input: &'a str) -> Cow<'a, str> {
+        if !input.as_bytes().contains(&b'[') {
+            return Cow::Borrowed(input);
+        }
+
         self.regex.replace_all(input, |captures: &regex::Captures| {
             let mut buf = String::with_capacity(32);
             if let Some(p) = captures.name("process_name") {
