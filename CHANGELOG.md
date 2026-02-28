@@ -2,6 +2,9 @@
 
 ## 5.6.0
 
+- Fixed a bug where URLs wrapped in parentheses or single quotes would incorrectly include the surrounding delimiters in
+  the highlight
+- Added support for parentheses in URL paths (e.g. Wikipedia-style URLs) with balanced parenthesis detection
 - Fixed a bug where files with symlinks in their path could not be opened consistently
 - Change builtin keyword highlighting of `true` from red to green
 - Enable LTO and single codegen unit for release builds, improving performance and reducing binary size
@@ -10,7 +13,7 @@
 ## 5.5.0
 
 - Fixed a bug where the IPv6 highlighter would swallow parts of a matched, but invalid IPv6 address
-- Improved unix path regex to include more valid paths
+- Improved Unix path regex to include more valid paths
 - Use aho-corasick for keyword highlighting for better performance
 - Disabled Unicode support in builtin regexes for better performance
 - Updated default colors for the JSON highlighter
