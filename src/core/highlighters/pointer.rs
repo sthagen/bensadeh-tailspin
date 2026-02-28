@@ -3,6 +3,7 @@ use crate::core::highlighter::Highlight;
 use nu_ansi_term::Style as NuStyle;
 use regex::{Captures, Error, Regex, RegexBuilder};
 use std::borrow::Cow;
+use std::fmt::Write as _;
 
 pub struct PointerHighlighter {
     regex: Regex,
@@ -41,6 +42,24 @@ impl PointerHighlighter {
     }
 }
 
+impl PointerHighlighter {
+    fn write_hex_chars(&self, buf: &mut String, text: &str) {
+        for (i, c) in text.char_indices() {
+            let s = &text[i..i + c.len_utf8()];
+            let style = match c {
+                '0'..='9' => &self.number,
+                'x' | 'X' => &self.x,
+                'a'..='f' | 'A'..='F' => &self.letter,
+                _ => {
+                    buf.push(c);
+                    continue;
+                }
+            };
+            let _ = write!(buf, "{}", style.paint(s));
+        }
+    }
+}
+
 impl Highlight for PointerHighlighter {
     fn apply<'a>(&self, input: &'a str) -> Cow<'a, str> {
         self.regex.replace_all(input, |caps: &Captures<'_>| {
@@ -50,42 +69,19 @@ impl Highlight for PointerHighlighter {
                 .or_else(|| caps.name("first_half64"))
                 .unwrap()
                 .as_str();
-            let formatted_prefix = prefix
-                .chars()
-                .map(|c| highlight_char(c, self.number, self.x, self.letter))
-                .collect::<String>();
-            let formatted_first_half = first_half
-                .chars()
-                .map(|c| highlight_char(c, self.number, self.x, self.letter))
-                .collect::<String>();
 
-            caps.name("second_half").map_or_else(
-                || format!("{}{}", formatted_prefix, formatted_first_half),
-                |second_half| {
-                    let formatted_second_half = second_half
-                        .as_str()
-                        .chars()
-                        .map(|c| highlight_char(c, self.number, self.x, self.letter))
-                        .collect::<String>();
-                    format!(
-                        "{}{}{}{}",
-                        formatted_prefix,
-                        formatted_first_half,
-                        self.separator.paint(self.separator_token.to_string()),
-                        formatted_second_half
-                    )
-                },
-            )
+            let mut buf = String::with_capacity(prefix.len() + first_half.len() * 2 + 32);
+            self.write_hex_chars(&mut buf, prefix);
+            self.write_hex_chars(&mut buf, first_half);
+
+            if let Some(second_half) = caps.name("second_half") {
+                let sep: &str = &self.separator_token.to_string();
+                let _ = write!(buf, "{}", self.separator.paint(sep));
+                self.write_hex_chars(&mut buf, second_half.as_str());
+            }
+
+            buf
         })
-    }
-}
-
-fn highlight_char(c: char, number: NuStyle, x: NuStyle, letter: NuStyle) -> String {
-    match c {
-        '0'..='9' => format!("{}", number.paint(c.to_string())),
-        'x' | 'X' => format!("{}", x.paint(c.to_string())),
-        'a'..='f' | 'A'..='F' => format!("{}", letter.paint(c.to_string())),
-        _ => c.to_string(),
     }
 }
 

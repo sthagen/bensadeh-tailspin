@@ -14,6 +14,7 @@
 - Enable LTO and single codegen unit for release builds, improving performance and reducing binary size
 - Quoted regions now highlight correctly while preserving inner highlights
 - The `--exec` flag now shows a clear error on Windows instead of failing with a generic message
+- Reduced string allocations in highlighters by replacing `format!()` with `write!()` to pre-allocated buffers
 
 ## 5.5.0
 

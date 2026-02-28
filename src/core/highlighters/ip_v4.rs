@@ -3,6 +3,7 @@ use crate::core::highlighter::Highlight;
 use nu_ansi_term::Style as NuStyle;
 use regex::{Captures, Error, Regex, RegexBuilder};
 use std::borrow::Cow;
+use std::fmt::Write as _;
 
 pub struct IpV4Highlighter {
     regex: Regex,
@@ -61,18 +62,18 @@ fn highlight_caps(seg_style: &NuStyle, sep_style: &NuStyle, caps: &Captures<'_>)
         }
     }
 
-    let mut output = String::new();
+    let mut output = String::with_capacity(32);
     for (i, &n) in names.iter().enumerate() {
         let text = caps.name(n).expect("named octet group always present").as_str();
-        output.push_str(&seg_style.paint(text).to_string());
+        let _ = write!(output, "{}", seg_style.paint(text));
         if i < 3 {
-            output.push_str(&sep_style.paint(".").to_string());
+            let _ = write!(output, "{}", sep_style.paint("."));
         }
     }
 
     if let Some(ms) = mask_str {
-        output.push_str(&sep_style.paint("/").to_string());
-        output.push_str(&seg_style.paint(ms).to_string());
+        let _ = write!(output, "{}", sep_style.paint("/"));
+        let _ = write!(output, "{}", seg_style.paint(ms));
     }
 
     output

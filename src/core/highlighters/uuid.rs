@@ -3,6 +3,7 @@ use crate::core::highlighter::Highlight;
 use nu_ansi_term::Style as NuStyle;
 use regex::{Captures, Error, Regex, RegexBuilder};
 use std::borrow::Cow;
+use std::fmt::Write as _;
 
 pub struct UuidHighlighter {
     regex: Regex,
@@ -39,15 +40,22 @@ impl UuidHighlighter {
 impl Highlight for UuidHighlighter {
     fn apply<'a>(&self, input: &'a str) -> Cow<'a, str> {
         self.regex.replace_all(input, |caps: &Captures<'_>| {
-            caps[0]
-                .chars()
-                .map(|c| match c {
-                    '0'..='9' => format!("{}", self.number.paint(c.to_string())),
-                    'a'..='f' | 'A'..='F' => format!("{}", self.letter.paint(c.to_string())),
-                    '-' => format!("{}", self.dash.paint(c.to_string())),
-                    _ => c.to_string(),
-                })
-                .collect::<String>()
+            let matched = &caps[0];
+            let mut buf = String::with_capacity(matched.len() + 32);
+            for (i, c) in matched.char_indices() {
+                let s = &matched[i..i + c.len_utf8()];
+                let style = match c {
+                    '0'..='9' => &self.number,
+                    'a'..='f' | 'A'..='F' => &self.letter,
+                    '-' => &self.dash,
+                    _ => {
+                        buf.push(c);
+                        continue;
+                    }
+                };
+                let _ = write!(buf, "{}", style.paint(s));
+            }
+            buf
         })
     }
 }

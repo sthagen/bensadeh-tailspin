@@ -3,6 +3,7 @@ use crate::core::highlighter::Highlight;
 use nu_ansi_term::Style as NuStyle;
 use regex::{Captures, Error, Regex, RegexBuilder};
 use std::borrow::Cow;
+use std::fmt::Write as _;
 
 pub struct KeyValueHighlighter {
     regex: Regex,
@@ -27,16 +28,15 @@ impl Highlight for KeyValueHighlighter {
     fn apply<'a>(&self, input: &'a str) -> Cow<'a, str> {
         self.regex.replace_all(input, |captures: &Captures| {
             let space_or_start = captures.name("space_or_start").map(|s| s.as_str()).unwrap_or_default();
-            let key = captures
-                .name("key")
-                .map(|k| format!("{}", self.key.paint(k.as_str())))
-                .unwrap_or_default();
-            let equals_sign = captures
-                .name("equals")
-                .map(|e| format!("{}", self.separator.paint(e.as_str())))
-                .unwrap_or_default();
-
-            format!("{}{}{}", space_or_start, key, equals_sign)
+            let mut buf = String::with_capacity(space_or_start.len() + 32);
+            buf.push_str(space_or_start);
+            if let Some(k) = captures.name("key") {
+                let _ = write!(buf, "{}", self.key.paint(k.as_str()));
+            }
+            if let Some(e) = captures.name("equals") {
+                let _ = write!(buf, "{}", self.separator.paint(e.as_str()));
+            }
+            buf
         })
     }
 }

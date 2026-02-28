@@ -170,8 +170,7 @@ mod tests {
         let input = r#"Log "abc [red]error[reset] then [cyan]42[reset] end" done"#
             .to_string()
             .convert_highlight_codes();
-        let expected =
-            r#"Log [yellow]"abc [red]error[reset][yellow] then [cyan]42[reset][yellow] end"[reset] done"#;
+        let expected = r#"Log [yellow]"abc [red]error[reset][yellow] then [cyan]42[reset][yellow] end"[reset] done"#;
 
         let actual = highlighter.apply(input.as_str());
 
@@ -185,9 +184,7 @@ mod tests {
             style: Style::new().fg(Color::Yellow),
         });
 
-        let input = r#""[red]error[reset] occurred""#
-            .to_string()
-            .convert_highlight_codes();
+        let input = r#""[red]error[reset] occurred""#.to_string().convert_highlight_codes();
         let expected = r#"[yellow]"[red]error[reset][yellow] occurred"[reset]"#;
 
         let actual = highlighter.apply(input.as_str());
@@ -202,9 +199,7 @@ mod tests {
             style: Style::new().fg(Color::Yellow),
         });
 
-        let input = r#""something [red]error[reset]""#
-            .to_string()
-            .convert_highlight_codes();
+        let input = r#""something [red]error[reset]""#.to_string().convert_highlight_codes();
         let expected = r#"[yellow]"something [red]error[reset][yellow]"[reset]"#;
 
         let actual = highlighter.apply(input.as_str());

@@ -62,20 +62,17 @@ impl Highlighter {
 
     /// Applies the configured highlights to the given input string.
     pub fn apply<'a>(&self, input: &'a str) -> Cow<'a, str> {
-        self.highlighters.iter().fold(
-            Cow::Borrowed(input),
-            |acc, highlighter| {
-                let result = if highlighter.needs_full_input() {
-                    highlighter.apply(&acc)
-                } else {
-                    apply_only_to_unhighlighted(&acc, highlighter)
-                };
-                match result {
-                    Cow::Borrowed(_) => acc,
-                    Cow::Owned(modified) => Cow::Owned(modified),
-                }
-            },
-        )
+        self.highlighters.iter().fold(Cow::Borrowed(input), |acc, highlighter| {
+            let result = if highlighter.needs_full_input() {
+                highlighter.apply(&acc)
+            } else {
+                apply_only_to_unhighlighted(&acc, highlighter)
+            };
+            match result {
+                Cow::Borrowed(_) => acc,
+                Cow::Owned(modified) => Cow::Owned(modified),
+            }
+        })
     }
 }
 

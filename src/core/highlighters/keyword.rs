@@ -4,6 +4,7 @@ use aho_corasick::{AhoCorasick, AhoCorasickBuilder, MatchKind};
 use nu_ansi_term::Style as NuStyle;
 use regex::Error;
 use std::borrow::Cow;
+use std::fmt::Write as _;
 
 pub struct KeywordHighlighter {
     ac: AhoCorasick,
@@ -51,10 +52,10 @@ impl Highlight for KeywordHighlighter {
             out_buf.push_str(&input[last..s]);
 
             if self.style.background.is_none() {
-                out_buf.push_str(&format!("{}", self.style.paint(&input[s..e])));
+                let _ = write!(out_buf, "{}", self.style.paint(&input[s..e]));
             } else {
                 let padded = format!(" {} ", &input[s..e]);
-                out_buf.push_str(&format!("{}", self.style.paint(padded)));
+                let _ = write!(out_buf, "{}", self.style.paint(padded));
             }
 
             last = e;

@@ -3,6 +3,7 @@ use crate::core::highlighter::Highlight;
 use nu_ansi_term::Style as NuStyle;
 use regex::{Captures, Error, Regex, RegexBuilder};
 use std::borrow::Cow;
+use std::fmt::Write as _;
 
 pub struct UrlHighlighter {
     url_regex: Regex,
@@ -73,7 +74,7 @@ impl Highlight for UrlHighlighter {
             let full_match = caps.get(0).map_or("", |m| m.as_str());
             let trim_count = count_unbalanced_trailing_parens(full_match);
 
-            let mut output = String::new();
+            let mut output = String::with_capacity(full_match.len() + 64);
 
             if let Some(protocol) = caps.name("protocol") {
                 let style = match protocol.as_str() {
@@ -81,20 +82,20 @@ impl Highlight for UrlHighlighter {
                     "https" => self.https,
                     _ => NuStyle::default(),
                 };
-                output.push_str(&format!("{}://", style.paint(protocol.as_str())));
+                let _ = write!(output, "{}://", style.paint(protocol.as_str()));
             }
 
             if let Some(host) = caps.name("host") {
-                output.push_str(&format!("{}", self.host.paint(host.as_str())));
+                let _ = write!(output, "{}", self.host.paint(host.as_str()));
             }
 
             if let Some(path) = caps.name("path") {
                 let path_str = path.as_str();
                 if caps.name("query").is_none() && trim_count > 0 {
                     let trimmed = &path_str[..path_str.len() - trim_count];
-                    output.push_str(&format!("{}", self.path.paint(trimmed)));
+                    let _ = write!(output, "{}", self.path.paint(trimmed));
                 } else {
-                    output.push_str(&format!("{}", self.path.paint(path_str)));
+                    let _ = write!(output, "{}", self.path.paint(path_str));
                 }
             }
 
@@ -104,22 +105,21 @@ impl Highlight for UrlHighlighter {
                 } else {
                     query.as_str()
                 };
-                let query_highlighted =
-                    self.query_params_regex
-                        .replace_all(query_str, |query_caps: &Captures<'_>| {
-                            let delimiter = query_caps.name("delimiter").map_or("", |m| m.as_str());
-                            let key = query_caps.name("key").map_or("", |m| m.as_str());
-                            let equal = query_caps.name("equal").map_or("", |m| m.as_str());
-                            let value = query_caps.name("value").map_or("", |m| m.as_str());
-                            format!(
-                                "{}{}{}{}",
-                                self.symbols.paint(delimiter),
-                                self.query_params_key.paint(key),
-                                self.symbols.paint(equal),
-                                self.query_params_value.paint(value)
-                            )
-                        });
-                output.push_str(&format!("{}", query_highlighted));
+                let query_highlighted = self
+                    .query_params_regex
+                    .replace_all(query_str, |query_caps: &Captures<'_>| {
+                        let delimiter = query_caps.name("delimiter").map_or("", |m| m.as_str());
+                        let key = query_caps.name("key").map_or("", |m| m.as_str());
+                        let equal = query_caps.name("equal").map_or("", |m| m.as_str());
+                        let value = query_caps.name("value").map_or("", |m| m.as_str());
+                        let mut qbuf = String::with_capacity(32);
+                        let _ = write!(qbuf, "{}", self.symbols.paint(delimiter));
+                        let _ = write!(qbuf, "{}", self.query_params_key.paint(key));
+                        let _ = write!(qbuf, "{}", self.symbols.paint(equal));
+                        let _ = write!(qbuf, "{}", self.query_params_value.paint(value));
+                        qbuf
+                    });
+                output.push_str(&query_highlighted);
             }
 
             // Append unbalanced trailing parens outside the highlighted URL

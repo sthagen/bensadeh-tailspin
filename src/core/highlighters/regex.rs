@@ -3,6 +3,7 @@ use crate::core::highlighter::Highlight;
 use nu_ansi_term::Style as NuStyle;
 use regex::{Error, Regex};
 use std::borrow::Cow;
+use std::fmt::Write as _;
 
 pub struct RegexpHighlighter {
     regex: Regex,
@@ -51,14 +52,14 @@ impl Highlight for RegexpHighlighter {
                             // Append text from the start of the match until the capture group.
                             new_string.push_str(&input[entire_match.start()..captured.start()]);
                             // Append the highlighted capture group.
-                            new_string.push_str(&format!("{}", self.style.paint(captured.as_str())));
+                            let _ = write!(new_string, "{}", self.style.paint(captured.as_str()));
                             // Append text from after the capture group until the end of the match.
                             new_string.push_str(&input[captured.end()..entire_match.end()]);
                         }
                     }
                     _ => {
                         // Highlight the entire match.
-                        new_string.push_str(&format!("{}", self.style.paint(entire_match.as_str())));
+                        let _ = write!(new_string, "{}", self.style.paint(entire_match.as_str()));
                     }
                 }
                 last_end = entire_match.end();

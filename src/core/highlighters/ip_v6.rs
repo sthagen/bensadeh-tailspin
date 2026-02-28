@@ -3,6 +3,7 @@ use crate::core::highlighter::Highlight;
 use nu_ansi_term::Style as NuStyle;
 use regex::{Captures, Error, Regex, RegexBuilder};
 use std::borrow::Cow;
+use std::fmt::Write as _;
 use std::net::Ipv6Addr;
 
 pub struct IpV6Highlighter {
@@ -35,19 +36,25 @@ impl Highlight for IpV6Highlighter {
         self.regex
             .replace_all(input, |caps: &Captures<'_>| match caps[1].parse::<Ipv6Addr>() {
                 Ok(_ip) => {
-                    let mut output = caps[1]
-                        .chars()
-                        .map(|c| match c {
-                            '0'..='9' => self.number.paint(c.to_string()).to_string(),
-                            'a'..='f' | 'A'..='F' => self.letter.paint(c.to_string()).to_string(),
-                            ':' | '.' => self.separator.paint(c.to_string()).to_string(),
-                            _ => c.to_string(),
-                        })
-                        .collect::<String>();
+                    let addr = &caps[1];
+                    let mut output = String::with_capacity(addr.len() + 32);
+                    for (i, c) in addr.char_indices() {
+                        let s = &addr[i..i + c.len_utf8()];
+                        let style = match c {
+                            '0'..='9' => &self.number,
+                            'a'..='f' | 'A'..='F' => &self.letter,
+                            ':' | '.' => &self.separator,
+                            _ => {
+                                output.push(c);
+                                continue;
+                            }
+                        };
+                        let _ = write!(output, "{}", style.paint(s));
+                    }
 
                     if let (Some(slash), Some(netmask)) = (caps.get(2), caps.get(3)) {
-                        output.push_str(&self.separator.paint(slash.as_str()).to_string());
-                        output.push_str(&self.number.paint(netmask.as_str()).to_string());
+                        let _ = write!(output, "{}", self.separator.paint(slash.as_str()));
+                        let _ = write!(output, "{}", self.number.paint(netmask.as_str()));
                     }
 
                     output
