@@ -13,6 +13,7 @@
 - Change builtin keyword highlighting of `true` from red to green
 - Enable LTO and single codegen unit for release builds, improving performance and reducing binary size
 - Quoted regions now highlight correctly while preserving inner highlights
+- The `--exec` flag now shows a clear error on Windows instead of failing with a generic message
 
 ## 5.5.0
 

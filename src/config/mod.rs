@@ -117,11 +117,7 @@ fn get_target(args: &Arguments, input: &Source) -> Result<Target, ConfigError> {
 }
 
 fn split_custom_pager_command(raw_command: &str) -> Result<CustomPagerOptions, ConfigError> {
-    let raw_args = if cfg!(windows) {
-        winsplit::split(raw_command)
-    } else {
-        shell_words::split(raw_command).unwrap_or_default()
-    };
+    let raw_args = shell_words::split(raw_command).unwrap_or_default();
 
     let (command, args) = match raw_args.split_first() {
         Some((first, rest)) if !rest.is_empty() => (first.to_string(), rest.to_vec()),

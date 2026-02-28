@@ -13,24 +13,34 @@ pub struct CommandReader {
 
 impl CommandReader {
     pub async fn new(command: String) -> Result<CommandReader> {
-        let trap_command = format!("trap '' INT; {}", command);
-
-        let child = Command::new("sh")
-            .arg("-c")
-            .arg(trap_command)
-            .stdout(Stdio::piped())
-            .spawn()
-            .into_diagnostic()
-            .wrap_err("Could not spawn process")?;
-
-        let stdout = child
-            .stdout
-            .ok_or_else(|| miette!("Could not capture stdout of spawned process"))?;
-
-        let reader = BufReader::with_capacity(BUFF_READER_CAPACITY, stdout);
-
-        Ok(CommandReader { reader, ready: false })
+        spawn_command(command).await
     }
+}
+
+#[cfg(not(windows))]
+async fn spawn_command(command: String) -> Result<CommandReader> {
+    let trap_command = format!("trap '' INT; {}", command);
+
+    let child = Command::new("sh")
+        .arg("-c")
+        .arg(trap_command)
+        .stdout(Stdio::piped())
+        .spawn()
+        .into_diagnostic()
+        .wrap_err("Could not spawn process")?;
+
+    let stdout = child
+        .stdout
+        .ok_or_else(|| miette!("Could not capture stdout of spawned process"))?;
+
+    let reader = BufReader::with_capacity(BUFF_READER_CAPACITY, stdout);
+
+    Ok(CommandReader { reader, ready: false })
+}
+
+#[cfg(windows)]
+async fn spawn_command(_command: String) -> Result<CommandReader> {
+    Err(miette!("The --exec flag is not supported on Windows"))
 }
 
 #[async_trait]
