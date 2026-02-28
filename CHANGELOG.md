@@ -15,6 +15,7 @@
 - Quoted regions now highlight correctly while preserving inner highlights
 - The `--exec` flag now shows a clear error on Windows instead of failing with a generic message
 - Reduced string allocations in highlighters by replacing `format!()` with `write!()` to pre-allocated buffers
+- Increased pre-allocation cap for highlighted output from 3KB to 16KB, avoiding reallocations on long log lines
 
 ## 5.5.0
 
