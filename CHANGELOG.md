@@ -1,7 +1,11 @@
 # Changelog
 
-## 5.6.0
+## Unreleased
 
+- Replaced `linemux` with a simple polling-based file reader, fixing `--follow` not working on certain filesystems
+  (NFS, FUSE, Docker bind mounts, etc.) ([#240](https://github.com/bensadeh/tailspin/issues/240))
+- Fixed a crash when reading files with non-UTF-8 content ([#31](https://github.com/bensadeh/tailspin/issues/31))
+- Added file truncation detection in follow mode
 - Fixed a bug where URLs wrapped in parentheses or single quotes would incorrectly include the surrounding delimiters in
   the highlight
 - Added support for parentheses in URL paths (e.g. Wikipedia-style URLs) with balanced parenthesis detection

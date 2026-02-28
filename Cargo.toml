@@ -23,7 +23,6 @@ async-trait = "0.1.89"
 clap = { version = "4.5.60", features = ["derive", "env", "wrap_help"] }
 clap_complete = "4.5.66"
 ctrlc = "3.5.2"
-linemux = "0.3.0"
 memchr = "2.7.6"
 miette = { version = "7.6.0", features = ["fancy"] }
 nu-ansi-term = "0.50.3"

@@ -4,7 +4,7 @@ use crate::initial_read::{InitialReadCompleteReceiver, InitialReadCompleteSender
 use crate::io::presenter::pager::{CustomPagerOptions, LessPagerOptions, Pager, PagerOptions};
 use crate::io::presenter::stdout::StdoutPresenter;
 use crate::io::reader::command::CommandReader;
-use crate::io::reader::linemux::Linemux;
+use crate::io::reader::file_reader::FileReader;
 use crate::io::reader::stdin::StdinReader;
 use crate::io::writer::stdout::StdoutWriter;
 use crate::io::writer::temp_file::TempFile;
@@ -17,7 +17,7 @@ use tokio::io::BufWriter;
 use uuid::Uuid;
 
 pub enum Reader {
-    Linemux(Linemux),
+    File(FileReader),
     Stdin(StdinReader),
     Command(CommandReader),
 }
@@ -60,7 +60,7 @@ pub async fn initialize_io() -> Result<(
 
 async fn get_reader(input: Source) -> Result<Reader> {
     let reader = match input {
-        Source::File(file) => Reader::Linemux(Linemux::new(file.path, file.terminate_after_first_read).await?),
+        Source::File(file) => Reader::File(FileReader::new(file.path, file.terminate_after_first_read).await?),
         Source::Stdin => Reader::Stdin(StdinReader::new()),
         Source::Command(cmd) => Reader::Command(CommandReader::new(cmd).await?),
     };
