@@ -1,6 +1,5 @@
 use crate::io::reader::StreamEvent::{Ended, Started};
 use crate::io::reader::{AsyncLineReader, StreamEvent};
-use async_trait::async_trait;
 use miette::{Context, IntoDiagnostic, Result};
 use std::path::Path;
 use std::time::Duration;
@@ -104,7 +103,6 @@ impl FileReader {
     }
 }
 
-#[async_trait]
 impl AsyncLineReader for FileReader {
     async fn next(&mut self) -> Result<StreamEvent> {
         if let Some(lines) = self.initial_lines.take() {

@@ -1,6 +1,5 @@
 use crate::io::reader::buffer_line_counter::{BUFF_READER_CAPACITY, ReadResult, read_lines};
 use crate::io::reader::{AsyncLineReader, StreamEvent};
-use async_trait::async_trait;
 use miette::{Context, IntoDiagnostic, Result, miette};
 use std::process::Stdio;
 use tokio::io::BufReader;
@@ -43,7 +42,6 @@ async fn spawn_command(_command: String) -> Result<CommandReader> {
     Err(miette!("The --exec flag is not supported on Windows"))
 }
 
-#[async_trait]
 impl AsyncLineReader for CommandReader {
     async fn next(&mut self) -> Result<StreamEvent> {
         if !self.ready {

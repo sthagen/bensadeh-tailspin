@@ -4,7 +4,6 @@ pub mod file_reader;
 pub mod stdin;
 
 use crate::io::controller::Reader;
-use async_trait::async_trait;
 use miette::Result;
 
 #[derive(Debug)]
@@ -15,12 +14,10 @@ pub enum StreamEvent {
     Lines(Vec<String>),
 }
 
-#[async_trait]
 pub trait AsyncLineReader {
     async fn next(&mut self) -> Result<StreamEvent>;
 }
 
-#[async_trait]
 impl AsyncLineReader for Reader {
     async fn next(&mut self) -> Result<StreamEvent> {
         match self {

@@ -18,6 +18,8 @@
 - Increased pre-allocation cap for highlighted output from 3KB to 16KB, avoiding reallocations on long log lines
 - Use SIMD-accelerated `memchr` for newline detection in buffered reader
 - Trim tokio features from `full` to only what's used, reducing compile time
+- Replace `async-trait` with native async traits (Rust 1.75+), removing a dependency and dynamic dispatch overhead
+- Add `strip = true` to release profile, reducing binary size
 
 ## 5.5.0
 

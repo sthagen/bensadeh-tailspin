@@ -1,5 +1,4 @@
 use crate::io::writer::AsyncLineWriter;
-use async_trait::async_trait;
 use miette::{Context, IntoDiagnostic, Result};
 use tokio::fs::File;
 use tokio::io::{AsyncWriteExt, BufWriter};
@@ -14,7 +13,6 @@ impl TempFile {
     }
 }
 
-#[async_trait]
 impl AsyncLineWriter for TempFile {
     async fn write(&mut self, line: &str) -> Result<()> {
         let line_with_newline = format!("{}\n", line);

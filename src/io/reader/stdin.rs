@@ -1,6 +1,5 @@
 use crate::io::reader::buffer_line_counter::{BUFF_READER_CAPACITY, ReadResult, read_lines};
 use crate::io::reader::{AsyncLineReader, StreamEvent};
-use async_trait::async_trait;
 use miette::Result;
 use tokio::io::{BufReader, Stdin, stdin};
 
@@ -18,7 +17,6 @@ impl StdinReader {
     }
 }
 
-#[async_trait]
 impl AsyncLineReader for StdinReader {
     async fn next(&mut self) -> Result<StreamEvent> {
         if !self.stream_started {
