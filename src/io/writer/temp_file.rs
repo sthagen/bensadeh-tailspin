@@ -15,10 +15,14 @@ impl TempFile {
 
 impl AsyncLineWriter for TempFile {
     async fn write(&mut self, line: &str) -> Result<()> {
-        let line_with_newline = format!("{}\n", line);
+        self.writer
+            .write_all(line.as_bytes())
+            .await
+            .into_diagnostic()
+            .wrap_err("Failed to write line to file")?;
 
         self.writer
-            .write_all(line_with_newline.as_bytes())
+            .write_all(b"\n")
             .await
             .into_diagnostic()
             .wrap_err("Failed to write line to file")?;

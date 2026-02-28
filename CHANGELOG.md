@@ -21,6 +21,7 @@
 - Replace `async-trait` with native async traits (Rust 1.75+), removing a dependency and dynamic dispatch overhead
 - Add `strip = true` to release profile, reducing binary size
 - Cache ANSI escape sequence finders in `ChunkIter` using `LazyLock` statics instead of recreating per call
+- Remove unnecessary string allocation in temp file writer
 
 ## 5.5.0
 
