@@ -8,140 +8,181 @@ use std::sync::LazyLock;
 static ESCAPE_FINDER: LazyLock<Finder<'static>> = LazyLock::new(|| Finder::new("\x1b["));
 static RESET_FINDER: LazyLock<Finder<'static>> = LazyLock::new(|| Finder::new("\x1b[0m"));
 
+const RESET_LEN: usize = "\x1b[0m".len();
 const SIXTEEN_KB: usize = 16 * 1024;
 
-#[derive(Default)]
-pub struct FoldState<'a> {
-    result: Option<String>,
-    processed: usize,
-    input: &'a str,
-}
-
-impl FoldState<'_> {
-    fn update(&mut self, text: &str) {
-        if let Some(buf) = &mut self.result {
-            buf.push_str(text);
-        } else {
-            self.processed += text.len();
-        }
-    }
-
-    fn update_owned(&mut self, new_text: &str) {
-        if self.result.is_none() {
-            let mut buf = allocate_string(self.input);
-            buf.push_str(&self.input[..self.processed]);
-            self.result = Some(buf);
-        }
-        self.result.as_mut().unwrap().push_str(new_text);
-    }
-}
-
 pub fn apply_only_to_unhighlighted<'a>(input: &'a str, highlighter: &StaticHighlight) -> Cow<'a, str> {
-    let mut state = FoldState {
-        input,
-        ..Default::default()
-    };
+    let bytes = input.as_bytes();
+    let mut result: Option<String> = None;
+    let mut copied = 0usize;
+    let mut pos = 0;
 
-    for chunk in ChunkIter::new(input) {
-        match chunk {
-            Chunk::AlreadyHighlighted(text) => state.update(text),
-            Chunk::NotHighlighted(text) => match highlighter.apply(text) {
-                Cow::Borrowed(new_text) => state.update(new_text),
-                Cow::Owned(new_text) => state.update_owned(&new_text),
-            },
-        }
-    }
-
-    state.result.map_or(Cow::Borrowed(input), Cow::Owned)
-}
-
-fn allocate_string(input: &str) -> String {
-    let input_length_times_3 = input.len().saturating_mul(3);
-    let allocation_size = min(input_length_times_3, SIXTEEN_KB);
-
-    String::with_capacity(allocation_size)
-}
-
-enum Chunk<'a> {
-    NotHighlighted(&'a str),
-    AlreadyHighlighted(&'a str),
-}
-
-struct ChunkIter<'a> {
-    input: &'a str,
-    pos: usize,
-    inside_escape: bool,
-}
-
-impl<'a> ChunkIter<'a> {
-    fn new(input: &'a str) -> Self {
-        Self {
-            input,
-            pos: 0,
-            inside_escape: false,
-        }
-    }
-}
-
-impl<'a> Iterator for ChunkIter<'a> {
-    type Item = Chunk<'a>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.pos >= self.input.len() {
-            return None;
-        }
-
-        let remainder = &self.input[self.pos..];
-
-        if self.inside_escape {
-            if let Some(idx) = RESET_FINDER.find(remainder.as_bytes()) {
-                let end = self.pos + idx + "\x1b[0m".len();
-                let chunk = Chunk::AlreadyHighlighted(&self.input[self.pos..end]);
-                self.pos = end;
-                self.inside_escape = false;
-                Some(chunk)
-            } else {
-                let chunk = Chunk::AlreadyHighlighted(remainder);
-                self.pos = self.input.len();
-                Some(chunk)
+    while pos < bytes.len() {
+        match ESCAPE_FINDER.find(&bytes[pos..]) {
+            None => {
+                apply_chunk(&input[pos..], highlighter, input, &mut result, &mut copied);
+                break;
             }
-        } else if let Some(idx) = ESCAPE_FINDER.find(remainder.as_bytes()) {
-            if idx == 0 {
-                self.inside_escape = true;
-                return self.next();
+            Some(esc_offset) => {
+                if esc_offset > 0 {
+                    apply_chunk(
+                        &input[pos..pos + esc_offset],
+                        highlighter,
+                        input,
+                        &mut result,
+                        &mut copied,
+                    );
+                    pos += esc_offset;
+                }
+
+                if let Some(reset_offset) = RESET_FINDER.find(&bytes[pos..]) {
+                    let end = pos + reset_offset + RESET_LEN;
+                    push_unchanged(&input[pos..end], &mut result, &mut copied);
+                    pos = end;
+                } else {
+                    push_unchanged(&input[pos..], &mut result, &mut copied);
+                    break;
+                }
             }
-            let chunk = Chunk::NotHighlighted(&self.input[self.pos..self.pos + idx]);
-            self.pos += idx;
-            Some(chunk)
-        } else {
-            let chunk = Chunk::NotHighlighted(remainder);
-            self.pos = self.input.len();
-            Some(chunk)
         }
     }
+
+    result.map_or(Cow::Borrowed(input), Cow::Owned)
+}
+
+#[inline(always)]
+fn apply_chunk(
+    text: &str,
+    highlighter: &StaticHighlight,
+    input: &str,
+    result: &mut Option<String>,
+    copied: &mut usize,
+) {
+    match highlighter.apply(text) {
+        Cow::Borrowed(_) => push_unchanged(text, result, copied),
+        Cow::Owned(ref new_text) => push_changed(new_text, input, result, copied),
+    }
+}
+
+#[inline(always)]
+fn push_unchanged(text: &str, result: &mut Option<String>, copied: &mut usize) {
+    if let Some(buf) = result {
+        buf.push_str(text);
+    } else {
+        *copied += text.len();
+    }
+}
+
+#[inline(always)]
+fn push_changed(new_text: &str, input: &str, result: &mut Option<String>, copied: &mut usize) {
+    let buf = result.get_or_insert_with(|| {
+        let extra = min(input.len(), SIXTEEN_KB);
+        let mut s = String::with_capacity(input.len() + extra);
+        s.push_str(&input[..*copied]);
+        s
+    });
+    buf.push_str(new_text);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::core::config::NumberConfig;
+    use crate::core::highlighters::number::NumberHighlighter;
+    use crate::core::highlighters::StaticHighlight;
+    use crate::style::{Color, Style};
+
+    fn number_highlighter() -> StaticHighlight {
+        StaticHighlight::Number(
+            NumberHighlighter::new(NumberConfig {
+                style: Style::new().fg(Color::Cyan),
+            })
+            .unwrap(),
+        )
+    }
 
     #[test]
-    fn test_chunk_iter() {
-        let input = "Text \x1b[31mhighlighted\x1b[0m text.";
-        let chunks: Vec<_> = ChunkIter::new(input).collect();
+    fn no_escapes_no_match() {
+        let h = number_highlighter();
+        let input = "hello world";
+        let result = apply_only_to_unhighlighted(input, &h);
+        assert!(matches!(result, Cow::Borrowed(_)));
+        assert_eq!(&*result, "hello world");
+    }
 
-        assert_eq!(chunks.len(), 3);
-        match &chunks[0] {
-            Chunk::NotHighlighted(text) => assert_eq!(*text, "Text "),
-            _ => panic!("Unexpected chunk"),
-        }
-        match &chunks[1] {
-            Chunk::AlreadyHighlighted(text) => assert_eq!(*text, "\x1b[31mhighlighted\x1b[0m"),
-            _ => panic!("Unexpected chunk"),
-        }
-        match &chunks[2] {
-            Chunk::NotHighlighted(text) => assert_eq!(*text, " text."),
-            _ => panic!("Unexpected chunk"),
-        }
+    #[test]
+    fn no_escapes_with_match() {
+        let h = number_highlighter();
+        let input = "count 42 end";
+        let result = apply_only_to_unhighlighted(input, &h);
+        assert!(matches!(result, Cow::Owned(_)));
+        assert!(result.contains("\x1b["));
+        assert!(result.contains("42"));
+    }
+
+    #[test]
+    fn skips_already_highlighted_region() {
+        let h = number_highlighter();
+        let input = "before \x1b[31m99\x1b[0m after";
+        let result = apply_only_to_unhighlighted(input, &h);
+        // 99 is inside an escape — should NOT be re-highlighted
+        // "before" and "after" have no numbers — no change
+        assert!(matches!(result, Cow::Borrowed(_)));
+    }
+
+    #[test]
+    fn highlights_outside_escapes() {
+        let h = number_highlighter();
+        let input = "val 7 \x1b[31mred\x1b[0m end";
+        let result = apply_only_to_unhighlighted(input, &h);
+        assert!(matches!(result, Cow::Owned(_)));
+        // The "7" outside the escape should be highlighted
+        assert!(result.contains("7"));
+        // The escape region should be preserved verbatim
+        assert!(result.contains("\x1b[31mred\x1b[0m"));
+    }
+
+    #[test]
+    fn escape_at_start() {
+        let h = number_highlighter();
+        let input = "\x1b[31mred\x1b[0m 42 end";
+        let result = apply_only_to_unhighlighted(input, &h);
+        assert!(matches!(result, Cow::Owned(_)));
+        assert!(result.starts_with("\x1b[31mred\x1b[0m"));
+    }
+
+    #[test]
+    fn escape_at_end() {
+        let h = number_highlighter();
+        let input = "hello \x1b[31m99\x1b[0m";
+        let result = apply_only_to_unhighlighted(input, &h);
+        assert!(matches!(result, Cow::Borrowed(_)));
+    }
+
+    #[test]
+    fn unclosed_escape() {
+        let h = number_highlighter();
+        let input = "ok \x1b[31mforever red 42";
+        let result = apply_only_to_unhighlighted(input, &h);
+        // "ok " has no number, and everything after \x1b[ is treated as highlighted
+        assert!(matches!(result, Cow::Borrowed(_)));
+    }
+
+    #[test]
+    fn multiple_escapes() {
+        let h = number_highlighter();
+        let input = "a \x1b[31mx\x1b[0m 5 \x1b[32my\x1b[0m b";
+        let result = apply_only_to_unhighlighted(input, &h);
+        assert!(matches!(result, Cow::Owned(_)));
+        assert!(result.contains("\x1b[31mx\x1b[0m"));
+        assert!(result.contains("\x1b[32my\x1b[0m"));
+    }
+
+    #[test]
+    fn empty_input() {
+        let h = number_highlighter();
+        let result = apply_only_to_unhighlighted("", &h);
+        assert!(matches!(result, Cow::Borrowed(_)));
+        assert_eq!(&*result, "");
     }
 }
