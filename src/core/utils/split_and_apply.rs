@@ -88,8 +88,8 @@ fn push_changed(new_text: &str, input: &str, result: &mut Option<String>, copied
 mod tests {
     use super::*;
     use crate::core::config::NumberConfig;
-    use crate::core::highlighters::number::NumberHighlighter;
     use crate::core::highlighters::StaticHighlight;
+    use crate::core::highlighters::number::NumberHighlighter;
     use crate::style::{Color, Style};
 
     fn number_highlighter() -> StaticHighlight {
