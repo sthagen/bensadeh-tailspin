@@ -2,27 +2,39 @@
 
 ## Unreleased
 
-- Replaced `linemux` with a simple polling-based file reader, fixing `--follow` not working on certain filesystems
-  (NFS, FUSE, Docker bind mounts, etc.) ([#240](https://github.com/bensadeh/tailspin/issues/240))
-- Fixed a crash when reading files with non-UTF-8 content ([#31](https://github.com/bensadeh/tailspin/issues/31))
-- Added file truncation detection in follow mode
-- Fixed a bug where URLs wrapped in parentheses or single quotes would incorrectly include the surrounding delimiters in
-  the highlight
-- Added support for parentheses in URL paths (e.g. Wikipedia-style URLs) with balanced parenthesis detection
-- Fixed a bug where files with symlinks in their path could not be opened consistently
-- Change builtin keyword highlighting of `true` from red to green
-- Enable LTO and single codegen unit for release builds, improving performance and reducing binary size
+### Added
+
+- File truncation detection in follow mode
+- Support for parentheses in URL paths (e.g. Wikipedia-style URLs) with balanced parenthesis detection
+- Clear error message for `--exec` on Windows instead of a generic failure
+
+### Fixed
+
+- `--follow` not working on certain filesystems (NFS, FUSE, Docker bind mounts, etc.) by replacing `linemux` with a
+  polling-based file reader ([#240](https://github.com/bensadeh/tailspin/issues/240))
+- Crash when reading files with non-UTF-8 content ([#31](https://github.com/bensadeh/tailspin/issues/31))
+- URLs wrapped in parentheses or single quotes incorrectly including surrounding delimiters in the highlight
+- Files with symlinks in their path could not be opened consistently
 - Quoted regions now highlight correctly while preserving inner highlights
-- The `--exec` flag now shows a clear error on Windows instead of failing with a generic message
+
+### Changed
+
+- Builtin keyword highlighting of `true` changed from red to green
+
+### Performance
+
 - Reduced string allocations in highlighters by replacing `format!()` with `write!()` to pre-allocated buffers
 - Increased pre-allocation cap for highlighted output from 3KB to 16KB, avoiding reallocations on long log lines
 - Use SIMD-accelerated `memchr` for newline detection in buffered reader
-- Trim tokio features from `full` to only what's used, reducing compile time
-- Replace `async-trait` with native async traits (Rust 1.75+), removing a dependency and dynamic dispatch overhead
-- Add `strip = true` to release profile, reducing binary size
-- Cache ANSI escape sequence finders in `ChunkIter` using `LazyLock` statics instead of recreating per call
-- Remove unnecessary string allocation in temp file writer
+- Cache ANSI escape sequence finders using `LazyLock` statics instead of recreating per call
 - Add fast byte-check early exits to key_value, unix_process, and pointer highlighters
+- Remove unnecessary string allocation in temp file writer
+
+### Build
+
+- Enable LTO, single codegen unit, and `strip = true` for release builds
+- Trim tokio features from `full` to only what's used, reducing compile time
+- Replace `async-trait` with native async traits, removing a dependency
 
 ## 5.5.0
 
