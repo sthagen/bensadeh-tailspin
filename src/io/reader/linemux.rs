@@ -17,14 +17,18 @@ pub struct Linemux {
 
 impl Linemux {
     pub async fn new<P: AsRef<Path>>(file_path: P, terminate_after_first_read: bool) -> Result<Linemux> {
-        let number_of_lines = count_lines(file_path.as_ref())?;
+        let file_path = std::fs::canonicalize(file_path.as_ref())
+            .into_diagnostic()
+            .wrap_err("Could not canonicalize file path")?;
+
+        let number_of_lines = count_lines(&file_path)?;
 
         let mut lines = MuxedLines::new()
             .into_diagnostic()
             .wrap_err("Could not instantiate linemux")?;
 
         lines
-            .add_file_from_start(file_path.as_ref())
+            .add_file_from_start(file_path.as_path())
             .await
             .into_diagnostic()
             .wrap_err("Could not add file to linemux")?;

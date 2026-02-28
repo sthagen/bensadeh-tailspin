@@ -1,6 +1,7 @@
 # Changelog
 ## 5.6.0
 
+- Fixed a bug where files with symlinks in their path could not be opened consistently
 - Change builtin keyword highlighting of `true` from red to green
 - Enable LTO and single codegen unit for release builds, improving performance and reducing binary size
 
