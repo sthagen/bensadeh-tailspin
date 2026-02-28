@@ -51,6 +51,8 @@ impl Highlight for QuoteHighlighter {
                     potential_reset_code,
                 } => {
                     if ch == self.quotes_token {
+                        // Flush any partially accumulated escape sequence.
+                        output.push_str(potential_reset_code);
                         // End of a quoted segment: insert the closing quote and reset.
                         output.push(ch);
                         output.push_str(RESET);
@@ -154,6 +156,135 @@ mod tests {
         let expected = r#"Hello "abc def ghi World"#;
 
         let actual = highlighter.apply(input);
+
+        assert_eq!(actual.to_string().convert_escape_codes(), expected);
+    }
+
+    #[test]
+    fn test_preserves_multiple_highlights_inside_quotes() {
+        let highlighter = QuoteHighlighter::new(QuotesConfig {
+            quotes_token: '"',
+            style: Style::new().fg(Color::Yellow),
+        });
+
+        let input = r#"Log "abc [red]error[reset] then [cyan]42[reset] end" done"#
+            .to_string()
+            .convert_highlight_codes();
+        let expected =
+            r#"Log [yellow]"abc [red]error[reset][yellow] then [cyan]42[reset][yellow] end"[reset] done"#;
+
+        let actual = highlighter.apply(input.as_str());
+
+        assert_eq!(actual.to_string().convert_escape_codes(), expected);
+    }
+
+    #[test]
+    fn test_highlight_at_start_of_quote() {
+        let highlighter = QuoteHighlighter::new(QuotesConfig {
+            quotes_token: '"',
+            style: Style::new().fg(Color::Yellow),
+        });
+
+        let input = r#""[red]error[reset] occurred""#
+            .to_string()
+            .convert_highlight_codes();
+        let expected = r#"[yellow]"[red]error[reset][yellow] occurred"[reset]"#;
+
+        let actual = highlighter.apply(input.as_str());
+
+        assert_eq!(actual.to_string().convert_escape_codes(), expected);
+    }
+
+    #[test]
+    fn test_highlight_at_end_of_quote() {
+        let highlighter = QuoteHighlighter::new(QuotesConfig {
+            quotes_token: '"',
+            style: Style::new().fg(Color::Yellow),
+        });
+
+        let input = r#""something [red]error[reset]""#
+            .to_string()
+            .convert_highlight_codes();
+        let expected = r#"[yellow]"something [red]error[reset][yellow]"[reset]"#;
+
+        let actual = highlighter.apply(input.as_str());
+
+        assert_eq!(actual.to_string().convert_escape_codes(), expected);
+    }
+
+    #[test]
+    fn test_no_highlights_inside_quotes() {
+        let highlighter = QuoteHighlighter::new(QuotesConfig {
+            quotes_token: '"',
+            style: Style::new().fg(Color::Yellow),
+        });
+
+        let input = r#"Hello "plain text" world"#;
+        let expected = r#"Hello [yellow]"plain text"[reset] world"#;
+
+        let actual = highlighter.apply(input);
+
+        assert_eq!(actual.to_string().convert_escape_codes(), expected);
+    }
+
+    #[test]
+    fn test_adjacent_quoted_strings() {
+        let highlighter = QuoteHighlighter::new(QuotesConfig {
+            quotes_token: '"',
+            style: Style::new().fg(Color::Yellow),
+        });
+
+        let input = r#""hello""world""#;
+        let expected = r#"[yellow]"hello"[reset][yellow]"world"[reset]"#;
+
+        let actual = highlighter.apply(input);
+
+        assert_eq!(actual.to_string().convert_escape_codes(), expected);
+    }
+
+    #[test]
+    fn test_empty_quoted_string() {
+        let highlighter = QuoteHighlighter::new(QuotesConfig {
+            quotes_token: '"',
+            style: Style::new().fg(Color::Yellow),
+        });
+
+        let input = r#"before "" after"#;
+        let expected = r#"before [yellow]""[reset] after"#;
+
+        let actual = highlighter.apply(input);
+
+        assert_eq!(actual.to_string().convert_escape_codes(), expected);
+    }
+
+    #[test]
+    fn test_entirely_highlighted_content_inside_quotes() {
+        let highlighter = QuoteHighlighter::new(QuotesConfig {
+            quotes_token: '"',
+            style: Style::new().fg(Color::Yellow),
+        });
+
+        let input = r#""[red]error[reset]""#.to_string().convert_highlight_codes();
+        let expected = r#"[yellow]"[red]error[reset][yellow]"[reset]"#;
+
+        let actual = highlighter.apply(input.as_str());
+
+        assert_eq!(actual.to_string().convert_escape_codes(), expected);
+    }
+
+    #[test]
+    fn test_single_quote_token() {
+        let highlighter = QuoteHighlighter::new(QuotesConfig {
+            quotes_token: '\'',
+            style: Style::new().fg(Color::Yellow),
+        });
+
+        let input = "msg 'hello [red]world[reset] end' done"
+            .to_string()
+            .convert_highlight_codes();
+        let expected = "msg [yellow]'hello [red]world[reset][yellow] end'[reset] done";
+
+        let actual = highlighter.apply(input.as_str());
 
         assert_eq!(actual.to_string().convert_escape_codes(), expected);
     }

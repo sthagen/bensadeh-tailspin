@@ -50,6 +50,12 @@ pub enum StaticHighlight {
     Uuid(UuidHighlighter),
 }
 
+impl StaticHighlight {
+    pub fn needs_full_input(&self) -> bool {
+        matches!(self, StaticHighlight::Quote(_))
+    }
+}
+
 impl Highlight for StaticHighlight {
     fn apply<'a>(&self, input: &'a str) -> Cow<'a, str> {
         match self {

@@ -64,9 +64,16 @@ impl Highlighter {
     pub fn apply<'a>(&self, input: &'a str) -> Cow<'a, str> {
         self.highlighters.iter().fold(
             Cow::Borrowed(input),
-            |acc, highlighter| match apply_only_to_unhighlighted(&acc, highlighter) {
-                Cow::Borrowed(_) => acc,
-                Cow::Owned(modified) => Cow::Owned(modified),
+            |acc, highlighter| {
+                let result = if highlighter.needs_full_input() {
+                    highlighter.apply(&acc)
+                } else {
+                    apply_only_to_unhighlighted(&acc, highlighter)
+                };
+                match result {
+                    Cow::Borrowed(_) => acc,
+                    Cow::Owned(modified) => Cow::Owned(modified),
+                }
             },
         )
     }
@@ -221,5 +228,98 @@ impl HighlighterBuilder {
             Err(e) => self.first_regex_error = Some(e),
         }
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::tests::escape_code_converter::ConvertEscapeCodes;
+    use crate::style::{Color, Style};
+
+    fn number_then_quote_highlighter() -> Highlighter {
+        let mut builder = Highlighter::builder();
+        builder
+            .with_number_highlighter(NumberConfig {
+                style: Style::new().fg(Color::Cyan),
+            })
+            .with_quote_highlighter(QuotesConfig {
+                quotes_token: '"',
+                style: Style::new().fg(Color::Yellow),
+            });
+        builder.build().unwrap()
+    }
+
+    #[test]
+    fn test_quote_highlights_around_existing_number() {
+        let highlighter = number_then_quote_highlighter();
+
+        let input = r#"count is "value 42 here" end"#;
+        let expected = r#"count is [yellow]"value [cyan]42[reset][yellow] here"[reset] end"#;
+
+        let actual = highlighter.apply(input);
+
+        assert_eq!(actual.to_string().convert_escape_codes(), expected);
+    }
+
+    #[test]
+    fn test_quote_with_no_highlights_inside() {
+        let highlighter = number_then_quote_highlighter();
+
+        let input = r#"msg "hello world" end"#;
+        let expected = r#"msg [yellow]"hello world"[reset] end"#;
+
+        let actual = highlighter.apply(input);
+
+        assert_eq!(actual.to_string().convert_escape_codes(), expected);
+    }
+
+    #[test]
+    fn test_number_outside_quotes_unaffected() {
+        let highlighter = number_then_quote_highlighter();
+
+        let input = r#"code 200 "error" end"#;
+        let expected = r#"code [cyan]200[reset] [yellow]"error"[reset] end"#;
+
+        let actual = highlighter.apply(input);
+
+        assert_eq!(actual.to_string().convert_escape_codes(), expected);
+    }
+
+    #[test]
+    fn test_multiple_numbers_inside_quotes() {
+        let highlighter = number_then_quote_highlighter();
+
+        let input = r#""port 8080 and 443""#;
+        let expected = r#"[yellow]"port [cyan]8080[reset][yellow] and [cyan]443[reset][yellow]"[reset]"#;
+
+        let actual = highlighter.apply(input);
+
+        assert_eq!(actual.to_string().convert_escape_codes(), expected);
+    }
+
+    #[test]
+    fn test_multiple_quoted_segments() {
+        let highlighter = number_then_quote_highlighter();
+
+        let input = r#""count 1" and "count 2""#;
+        let expected =
+            r#"[yellow]"count [cyan]1[reset][yellow]"[reset] and [yellow]"count [cyan]2[reset][yellow]"[reset]"#;
+
+        let actual = highlighter.apply(input);
+
+        assert_eq!(actual.to_string().convert_escape_codes(), expected);
+    }
+
+    #[test]
+    fn test_no_quotes_only_numbers() {
+        let highlighter = number_then_quote_highlighter();
+
+        let input = "status 200 ok";
+        let expected = "status [cyan]200[reset] ok";
+
+        let actual = highlighter.apply(input);
+
+        assert_eq!(actual.to_string().convert_escape_codes(), expected);
     }
 }
