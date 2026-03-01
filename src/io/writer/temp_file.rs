@@ -27,6 +27,7 @@ impl AsyncLineWriter for TempFile {
             .into_diagnostic()
             .wrap_err("Failed to write line to file")?;
 
+        // Flush after each write so the pager (e.g. less +F) sees lines immediately
         self.writer
             .flush()
             .await
