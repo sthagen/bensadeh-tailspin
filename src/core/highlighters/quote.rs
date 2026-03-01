@@ -46,10 +46,7 @@ impl Highlight for QuoteHighlighter {
 
         for ch in input.chars() {
             match &mut state {
-                InsideQuote {
-                    color_inside_quote: color,
-                    potential_reset_code,
-                } => {
+                InsideQuote { potential_reset_code } => {
                     if ch == self.quotes_token {
                         // Flush any partially accumulated escape sequence.
                         output.push_str(potential_reset_code);
@@ -64,7 +61,7 @@ impl Highlight for QuoteHighlighter {
                     potential_reset_code.push(ch);
                     if potential_reset_code.as_str() == RESET {
                         output.push_str(potential_reset_code);
-                        output.push_str(color);
+                        output.push_str(&self.color);
                         potential_reset_code.clear();
                     } else if !RESET.starts_with(potential_reset_code.as_str()) {
                         // The accumulated characters do not form the reset code.
@@ -78,7 +75,6 @@ impl Highlight for QuoteHighlighter {
                         output.push_str(&self.color);
                         output.push(ch);
                         state = InsideQuote {
-                            color_inside_quote: self.color.clone(),
                             potential_reset_code: String::new(),
                         };
                         continue;
@@ -93,10 +89,7 @@ impl Highlight for QuoteHighlighter {
 }
 
 enum State {
-    InsideQuote {
-        color_inside_quote: String,
-        potential_reset_code: String,
-    },
+    InsideQuote { potential_reset_code: String },
     OutsideQuote,
 }
 
