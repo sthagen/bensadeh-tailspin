@@ -94,7 +94,7 @@ impl Highlight for JsonHighlighter {
             Err(_) => return Cow::Borrowed(input),
         };
 
-        let mut output = String::new();
+        let mut output = String::with_capacity(input.len() * 2);
         self.format_json(&json_value, &mut output);
 
         Cow::Owned(output)
