@@ -29,12 +29,15 @@
 - Cache ANSI escape sequence finders using `LazyLock` statics instead of recreating per call
 - Add fast byte-check early exits to key_value, unix_process, and pointer highlighters
 - Remove unnecessary string allocation in temp file writer
+- Remove per-quoted-segment string clone in quote highlighter
+- Pre-allocate JSON highlighter output buffer
 
 ### Build
 
 - Enable LTO, single codegen unit, and `strip = true` for release builds
 - Trim tokio features from `full` to only what's used, reducing compile time
 - Replace `async-trait` with native async traits, removing a dependency
+- Remove `uuid` dependency by using a fixed temp file name within the unique temp directory
 
 ## 5.5.0
 

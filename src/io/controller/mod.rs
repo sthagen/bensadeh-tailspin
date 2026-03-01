@@ -14,7 +14,7 @@ use tailspin::Highlighter;
 use tempfile::TempDir;
 use tokio::fs::File;
 use tokio::io::BufWriter;
-use uuid::Uuid;
+
 
 pub enum Reader {
     File(FileReader),
@@ -104,7 +104,7 @@ async fn get_temp_file_and_pager(pager_opts: PagerOptions) -> Result<(Writer, Pr
 }
 
 async fn create_temp_file() -> Result<(TempDir, PathBuf, BufWriter<File>)> {
-    let filename = format!("tailspin.temp.{}", Uuid::new_v4());
+    let filename = "tailspin.temp";
 
     let temp_dir = tempfile::tempdir()
         .into_diagnostic()
